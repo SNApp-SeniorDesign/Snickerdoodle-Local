@@ -1,4 +1,5 @@
 <?php
+// NOTE: Lives in /var/www/html/index.php
 $file   = "wpa_supplicant.conf";
 $wifi_script = "wifi_connect_setup.sh";
 
