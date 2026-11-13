@@ -7,10 +7,8 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-read -r -p "Enter PCM file path: " PCM_FILE
-
-if [ ! -f "$PCM_FILE" ]; then
-    echo "ERROR: file not found: $PCM_FILE"
+if [ ! -f "$1" ]; then
+    echo "ERROR: file not found: $1"
     exit 1
 fi
 
@@ -27,13 +25,13 @@ CLEAR_GPIO=0x41210000
 
 echo
 echo "=== AXI DMA PCM detector test ==="
-echo "PCM file: $PCM_FILE"
+echo "PCM file: $1"
 echo "DDR address: $DDR_ADDR"
 echo "Transfer length: $TRANSFER_LENGTH bytes"
 
 echo
 echo "[1/6] Copying PCM file into reserved DDR..."
-dd if="$PCM_FILE" \
+dd if="$1" \
    of=/dev/mem \
    bs=1M \
    seek=384 \
