@@ -41,6 +41,13 @@ if [[ $(stat -c%s "$PCM_FILE") -ne $TRANSFER_LENGTH ]]; then
     exit 1
 fi
 
+SILENCE_FILE="$SCRIPT_DIR/silence_48k.pcm"
+
+if [[ "$PCM_FILE" != "$SILENCE_FILE" ]]; then
+    echo "Conditioning detector with silence..."
+    bash "$SCRIPT_DIR/run_tone_test.sh" "$SILENCE_FILE" >/dev/null
+fi
+
 echo "Loading $PCM_FILE into DDR..."
 dd if="$PCM_FILE" of=/dev/mem bs=1M seek=384 conv=notrunc status=none
 sync
