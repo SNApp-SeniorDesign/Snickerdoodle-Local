@@ -11,6 +11,7 @@ if (( $# != 1 )); then
     exit 1
 fi
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PCM_FILE="$1"
 TRANSFER_LENGTH=96000
 
@@ -22,6 +23,14 @@ DMA_LENGTH=0x40400028
 FLAG_GPIO=0x41200000
 CLEAR_GPIO=0x41210000
 
+read_reg() {
+    devmem2 "$1" w | awk '/Value at address/ { print $NF }'
+}
+
+write_reg() {
+    devmem2 "$1" w "$2" >/dev/null
+}
+
 if [[ ! -f "$PCM_FILE" ]]; then
     echo "PCM file not found: $PCM_FILE"
     exit 1
@@ -31,14 +40,6 @@ if [[ $(stat -c%s "$PCM_FILE") -ne $TRANSFER_LENGTH ]]; then
     echo "PCM file must be exactly $TRANSFER_LENGTH bytes."
     exit 1
 fi
-
-read_reg() {
-    devmem2 "$1" w | awk '/Value at address/ { print $NF }'
-}
-
-write_reg() {
-    devmem2 "$1" w "$2" >/dev/null
-}
 
 echo "Loading $PCM_FILE into DDR..."
 dd if="$PCM_FILE" of=/dev/mem bs=1M seek=384 conv=notrunc status=none
@@ -54,7 +55,6 @@ FLAG=$((FLAG_HEX))
 
 if (( FLAG & 1 )); then
     echo "ERROR: detector flag is still high before DMA."
-    echo "Flag value: $FLAG_HEX"
     exit 1
 fi
 
@@ -68,7 +68,6 @@ sleep 1
 
 STATUS_HEX=$(read_reg "$DMA_STATUS")
 FLAG_HEX=$(read_reg "$FLAG_GPIO")
-
 STATUS=$((STATUS_HEX))
 FLAG=$((FLAG_HEX))
 
@@ -86,3 +85,7 @@ if (( FLAG & 1 )); then
 else
     echo "NOT DETECTED"
 fi
+
+echo
+echo "Reading Goertzel power..."
+bash "$SCRIPT_DIR/power_mem_read.sh"
