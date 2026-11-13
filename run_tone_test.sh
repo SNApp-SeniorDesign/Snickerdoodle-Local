@@ -1,14 +1,22 @@
 #!/bin/bash
 
-set -e
+set -euo pipefail
 
 if [ "$EUID" -ne 0 ]; then
     echo "ERROR: run this script as root."
     exit 1
 fi
 
-if [ ! -f "$1" ]; then
-    echo "ERROR: file not found: $1"
+if [ "$#" -ne 1 ]; then
+    echo "Usage: $0 <pcm_file>"
+    echo "Example: $0 tone_4k_48k.pcm"
+    exit 1
+fi
+
+PCM_FILE="$1"
+
+if [ ! -f "$PCM_FILE" ]; then
+    echo "ERROR: PCM file not found: $PCM_FILE"
     exit 1
 fi
 
@@ -23,15 +31,15 @@ DMA_LENGTH=0x40400028
 FLAG_GPIO=0x41200000
 CLEAR_GPIO=0x41210000
 
-echo
 echo "=== AXI DMA PCM detector test ==="
-echo "PCM file: $1"
+echo
+echo "PCM file: $PCM_FILE"
 echo "DDR address: $DDR_ADDR"
 echo "Transfer length: $TRANSFER_LENGTH bytes"
 
 echo
-echo "[1/6] Copying PCM file into reserved DDR..."
-dd if="$1" \
+echo "[1/7] Copying PCM file into reserved DDR..."
+dd if="$PCM_FILE" \
    of=/dev/mem \
    bs=1M \
    seek=384 \
@@ -40,21 +48,36 @@ sync
 echo "PCM file copied."
 
 echo
-echo "[2/6] Clearing sticky detector flag..."
+echo "[2/7] Clearing sticky detector flag..."
 devmem2 "$CLEAR_GPIO" w 0
 devmem2 "$CLEAR_GPIO" w 1
 devmem2 "$CLEAR_GPIO" w 0
 
 echo
-echo "[3/6] Reading initial DMA status..."
+echo "[3/7] Verifying detector flag is clear..."
+CLEAR_OUTPUT=$(devmem2 "$FLAG_GPIO" w)
+echo "$CLEAR_OUTPUT"
+
+CLEAR_HEX=$(echo "$CLEAR_OUTPUT" | awk '/Value at address/ {print $NF}')
+CLEAR_VALUE=$((CLEAR_HEX))
+
+if (( CLEAR_VALUE & 1 )); then
+    echo "ERROR: detector flag did not clear."
+    exit 1
+fi
+
+echo "Detector flag is clear."
+
+echo
+echo "[4/7] Reading initial DMA status..."
 devmem2 "$DMA_STATUS" w
 
 echo
-echo "[4/6] Enabling DMA..."
+echo "[5/7] Enabling DMA..."
 devmem2 "$DMA_CONTROL" w 1
 
 echo
-echo "[5/6] Configuring and starting DMA..."
+echo "[6/7] Configuring and starting DMA..."
 devmem2 "$DMA_SOURCE" w "$DDR_ADDR"
 devmem2 "$DMA_LENGTH" w "$TRANSFER_LENGTH"
 
@@ -63,7 +86,7 @@ echo "Waiting for transfer completion..."
 sleep 1
 
 echo
-echo "[6/6] Reading final status and detector flag..."
+echo "[7/7] Reading final DMA status and detector flag..."
 
 STATUS_OUTPUT=$(devmem2 "$DMA_STATUS" w)
 echo "$STATUS_OUTPUT"
