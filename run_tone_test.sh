@@ -49,8 +49,13 @@ echo "PCM file copied."
 
 echo
 echo "[2/7] Clearing sticky detector flag..."
-devmem2 "$CLEAR_GPIO" w 0
+echo "Asserting clear..."
 devmem2 "$CLEAR_GPIO" w 1
+
+echo "Holding clear high for one second..."
+sleep 1
+
+echo "Deasserting clear..."
 devmem2 "$CLEAR_GPIO" w 0
 
 echo
