@@ -1,0 +1,13 @@
+Lives in: /etc/systemd/system/snapp-hotspot.service
+[Unit]
+Description=SNApp hotspot (wlan1)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/bin/bash /root/start_hotspot.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
